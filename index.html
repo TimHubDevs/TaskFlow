@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TaskFlow — Планувальник завдань</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Syne:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:           #06060f;
+      --surface:      #0c0c1e;
+      --card:         #111124;
+      --card-hover:   #161632;
+      --border:       rgba(255,255,255,0.06);
+      --border-h:     rgba(255,255,255,0.13);
+
+      --accent:       #4fffb0;
+      --accent-dim:   rgba(79,255,176,0.12);
+      --accent-dim2:  rgba(79,255,176,0.05);
+      --accent-glow:  rgba(79,255,176,0.25);
+
+      --purple:       #9d7ff5;
+      --purple-dim:   rgba(157,127,245,0.15);
+      --amber:        #f5a623;
+      --amber-dim:    rgba(245,166,35,0.13);
+      --red:          #f06060;
+      --red-dim:      rgba(240,96,96,0.1);
+
+      --s-todo:       #606080;
+      --s-todo-bg:    rgba(96,96,128,0.12);
+      --s-prog:       #f5a623;
+      --s-prog-bg:    rgba(245,166,35,0.12);
+      --s-done:       #4fffb0;
+      --s-done-bg:    rgba(79,255,176,0.1);
+
+      --txt:          #eeeeff;
+      --txt-muted:    #7070a0;
+      --txt-dim:      #303050;
+
+      --ff-display:   'Syne', sans-serif;
+      --ff-mono:      'JetBrains Mono', monospace;
+      --r:  7px;
+      --r-s:4px;
+      --r-l:12px;
+      --tr: 0.14s ease;
+      --tr-s: 0.28s ease;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--txt);
+      font-family: var(--ff-mono);
+      font-size: 13px;
+      line-height: 1.5;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Subtle grid bg */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(79,255,176,0.015) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(79,255,176,0.015) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ───── LAYOUT ───── */
+    .app { max-width: 820px; margin: 0 auto; padding: 0 20px 80px; position: relative; z-index: 1; }
+
+    /* ───── HEADER ───── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 28px 0 22px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 22px;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .logo { display: flex; align-items: center; gap: 12px; }
+
+    .logo-mark {
+      width: 34px; height: 34px;
+      background: var(--accent-dim);
+      border: 1px solid rgba(79,255,176,0.3);
+      border-radius: var(--r-s);
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--ff-display);
+      font-weight: 800; font-size: 16px;
+      color: var(--accent);
+    }
+
+    .logo-text { display: flex; flex-direction: column; gap: 1px; }
+
+    .logo-name {
+      font-family: var(--ff-display);
+      font-size: 19px; font-weight: 800;
+      color: var(--txt); letter-spacing: -0.3px; line-height: 1;
+    }
+    .logo-name em { color: var(--accent); font-style: normal; }
+
+    .logo-sub {
+      font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase;
+      color: var(--txt-muted);
+    }
+
+    .header-actions { display: flex; align-items: center; gap: 8px; }
+
+    /* ───── TABS ───── */
+    .tabs {
+      display: flex; gap: 2px;
+      background: var(--surface);
+      padding: 3px; border-radius: var(--r);
+      border: 1px solid var(--border);
+    }
+
+    .tab {
+      padding: 6px 16px; border-radius: calc(var(--r) - 2px);
+      border: none; background: transparent; cursor: pointer;
+      font-family: var(--ff-mono); font-size: 11px;
+      color: var(--txt-muted);
+      transition: all var(--tr);
+      display: flex; align-items: center; gap: 6px;
+    }
+
+    .tab.active { background: var(--card); color: var(--txt); box-shadow: 0 1px 6px rgba(0,0,0,0.4); }
+
+    .tab-badge {
+      background: var(--accent-dim); color: var(--accent);
+      padding: 1px 6px; border-radius: 10px; font-size: 9px; font-weight: 600;
+    }
+    .tab.active .tab-badge { background: var(--accent-dim); }
+
+    /* ───── BUTTONS ───── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 14px; border-radius: var(--r);
+      border: 1px solid transparent; cursor: pointer;
+      font-family: var(--ff-mono); font-size: 11px; font-weight: 500;
+      letter-spacing: 0.03em; transition: all var(--tr); white-space: nowrap;
+    }
+    .btn svg { flex-shrink: 0; }
+
+    .btn-primary {
+      background: var(--accent); color: #06060f;
+      border-color: var(--accent);
+    }
+    .btn-primary:hover {
+      background: #3aedA0; border-color: #3aeda0;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 18px var(--accent-glow);
+    }
+
+    .btn-ghost {
+      background: transparent; color: var(--txt-muted);
+      border-color: var(--border);
+    }
+    .btn-ghost:hover { color: var(--txt); border-color: var(--border-h); background: rgba(255,255,255,0.03); }
+
+    .btn-danger { background: transparent; color: var(--red); border-color: rgba(240,96,96,0.3); }
+    .btn-danger:hover { background: var(--red-dim); }
+
+    .btn-icon {
+      width: 30px; height: 30px; padding: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* ───── STATS ───── */
+    .stats-bar {
+      display: flex; gap: 0;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-l); overflow: hidden; margin-bottom: 16px;
+    }
+
+    .stat-item {
+      flex: 1; padding: 12px 16px;
+      border-right: 1px solid var(--border);
+    }
+    .stat-item:last-child { border-right: none; }
+
+    .stat-val {
+      font-family: var(--ff-display); font-size: 22px;
+      font-weight: 800; line-height: 1; color: var(--txt);
+    }
+    .stat-val.c-accent { color: var(--accent); }
+    .stat-val.c-amber  { color: var(--amber); }
+    .stat-val.c-muted  { color: var(--txt-muted); }
+
+    .stat-lbl { font-size: 9px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--txt-muted); margin-top: 2px; }
+
+    /* ───── FILTER BAR ───── */
+    .filter-bar {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+      padding: 10px 14px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-l); margin-bottom: 18px;
+    }
+
+    .filter-lbl { font-size: 9px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--txt-dim); flex-shrink: 0; }
+
+    .active-chips { display: flex; flex-wrap: wrap; gap: 5px; flex: 1; min-width: 0; }
+
+    .chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 8px 3px 10px; border-radius: 20px;
+      font-size: 10px; border: 1px solid transparent;
+      animation: chipIn 0.15s ease;
+    }
+    @keyframes chipIn { from { opacity:0; transform: scale(0.8); } to { opacity:1; transform: scale(1); } }
+
+    .chip-x {
+      width: 15px; height: 15px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; opacity: 0.55; transition: opacity var(--tr);
+      font-size: 9px; flex-shrink: 0;
+    }
+    .chip-x:hover { opacity: 1; }
+
+    .clear-all {
+      font-size: 10px; color: var(--txt-dim); cursor: pointer;
+      padding: 3px 6px; border-radius: var(--r-s);
+      transition: color var(--tr);
+    }
+    .clear-all:hover { color: var(--red); }
+
+    /* Filter dropdown trigger */
+    .filter-wrap { position: relative; }
+
+    .filter-dropdown {
+      position: absolute; top: calc(100% + 6px); left: 0;
+      background: var(--surface); border: 1px solid var(--border-h);
+      border-radius: var(--r-l); padding: 8px; z-index: 60;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.55); min-width: 210px;
+      display: none;
+    }
+    .filter-dropdown.open { display: block; animation: fadeDown 0.15s ease; }
+    @keyframes fadeDown { from { opacity:0; transform: translateY(-6px); } to { opacity:1; transform: translateY(0); } }
+
+    .fd-section { font-size: 9px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--txt-dim); padding: 4px 8px 6px; }
+    .fd-sep { height: 1px; background: var(--border); margin: 5px 0; }
+
+    .fd-option {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 8px; border-radius: var(--r-s); cursor: pointer;
+      transition: background var(--tr); font-size: 11px; color: var(--txt-muted);
+    }
+    .fd-option:hover { background: var(--card); color: var(--txt); }
+    .fd-option.on { background: var(--accent-dim2); color: var(--txt); }
+
+    .fd-check {
+      width: 15px; height: 15px; border-radius: 3px;
+      border: 1.5px solid var(--border-h); flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 9px; transition: all var(--tr);
+    }
+    .fd-option.on .fd-check { background: var(--accent); border-color: var(--accent); color: #06060f; }
+
+    /* Search */
+    .search-wrap { position: relative; }
+    .search-wrap svg { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: var(--txt-muted); pointer-events: none; }
+
+    .search-input {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--r); padding: 7px 10px 7px 30px;
+      color: var(--txt); font-family: var(--ff-mono); font-size: 11px;
+      outline: none; transition: border-color var(--tr); width: 190px;
+    }
+    .search-input:focus { border-color: var(--accent); }
+    .search-input::placeholder { color: var(--txt-dim); }
+
+    /* ───── GROUP LABELS ───── */
+    .group-label {
+      font-size: 9px; text-transform: uppercase; letter-spacing: 0.14em;
+      color: var(--txt-dim); padding: 14px 0 6px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .group-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    /* ───── TASK CARD ───── */
+    .task-list { display: flex; flex-direction: column; gap: 2px; }
+
+    .task-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--r); padding: 13px 14px;
+      cursor: pointer; transition: all var(--tr);
+      position: relative; overflow: hidden;
+      animation: cardIn 0.18s ease both;
+    }
+    @keyframes cardIn { from { opacity:0; transform: translateX(-6px); } to { opacity:1; transform: translateX(0); } }
+
+    /* Left accent bar */
+    .task-card::before {
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
+      border-radius: 2px 0 0 2px; transition: background var(--tr);
+    }
+    .task-card.todo::before       { background: var(--border-h); }
+    .task-card.in_progress::before { background: var(--s-prog); }
+    .task-card.done::before        { background: var(--s-done); }
+
+    .task-card:hover { border-color: var(--border-h); background: var(--card-hover); }
+
+    .task-row { display: flex; align-items: flex-start; gap: 11px; }
+
+    /* Checkbox */
+    .task-cb {
+      width: 18px; height: 18px; border-radius: 5px;
+      border: 1.5px solid var(--border-h); flex-shrink: 0; margin-top: 1px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all var(--tr);
+    }
+    .task-cb:hover { border-color: var(--accent); background: var(--accent-dim); }
+    .task-card.done .task-cb { border-color: var(--accent); background: var(--accent); color: #06060f; }
+    .task-card.in_progress .task-cb { border-color: rgba(245,166,35,0.4); }
+    .task-cb svg { opacity: 0; transition: opacity var(--tr); }
+    .task-card.done .task-cb svg { opacity: 1; }
+
+    .task-body { flex: 1; min-width: 0; }
+
+    .task-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 3px; }
+
+    .task-title {
+      font-family: var(--ff-display); font-size: 13.5px; font-weight: 600;
+      color: var(--txt); line-height: 1.3; flex: 1;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .task-card.done .task-title { text-decoration: line-through; color: var(--txt-muted); }
+
+    .task-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 7px; border-radius: var(--r-s);
+      font-size: 9px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase;
+    }
+    .status-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+    .status-badge.todo       { background: var(--s-todo-bg); color: var(--s-todo); }
+    .status-badge.in_progress{ background: var(--s-prog-bg); color: var(--s-prog); }
+    .status-badge.done       { background: var(--s-done-bg); color: var(--s-done); }
+    .status-badge.in_progress .status-dot { animation: blink 1.6s ease-in-out infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    .task-desc {
+      font-size: 11px; color: var(--txt-muted); margin-bottom: 8px;
+      display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
+    }
+
+    .task-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+
+    .tag-pill {
+      display: inline-flex; align-items: center; gap: 3px;
+      padding: 2px 7px; border-radius: 12px; font-size: 10px;
+      border: 1px solid transparent; letter-spacing: 0.02em;
+    }
+
+    /* Progress area */
+    .task-progress { display: flex; align-items: center; gap: 8px; }
+
+    .prog-track {
+      flex: 1; height: 3px; background: rgba(255,255,255,0.05);
+      border-radius: 2px; overflow: visible; position: relative; cursor: pointer;
+    }
+
+    .prog-fill {
+      height: 100%; border-radius: 2px; transition: width 0.3s ease;
+      position: relative;
+    }
+    .task-card.todo        .prog-fill { background: var(--txt-dim); }
+    .task-card.in_progress .prog-fill { background: linear-gradient(90deg, var(--purple), var(--s-prog)); }
+    .task-card.done        .prog-fill { background: var(--accent); }
+
+    /* Inline slider (appears on hover of progress track) */
+    .prog-slider-wrap {
+      position: absolute; inset: -8px -4px; opacity: 0;
+      transition: opacity var(--tr); pointer-events: none;
+    }
+    .task-card:hover .prog-slider-wrap { opacity: 1; pointer-events: all; }
+
+    .prog-slider {
+      width: 100%; height: 100%;
+      -webkit-appearance: none; appearance: none;
+      background: transparent; cursor: pointer; outline: none;
+    }
+    .prog-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 14px; height: 14px;
+      border-radius: 50%; background: var(--accent);
+      border: 2px solid var(--card); cursor: pointer;
+      transition: transform var(--tr);
+    }
+    .prog-slider::-webkit-slider-thumb:hover { transform: scale(1.25); }
+    .prog-slider::-webkit-slider-runnable-track { background: transparent; }
+
+    .prog-pct { font-size: 10px; color: var(--txt-muted); min-width: 30px; text-align: right; }
+
+    .task-date { font-size: 10px; color: var(--txt-dim); }
+
+    .task-footer { display: flex; align-items: center; gap: 10px; margin-top: 2px; }
+
+    /* ───── EMPTY STATE ───── */
+    .empty-state {
+      text-align: center; padding: 64px 20px; color: var(--txt-muted);
+      animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+    .empty-icon { font-size: 36px; margin-bottom: 14px; opacity: 0.25; }
+    .empty-state h3 { font-family: var(--ff-display); font-size: 17px; font-weight: 700; color: var(--txt-dim); margin-bottom: 6px; }
+    .empty-state p { font-size: 11px; }
+
+    /* ───── MODAL ───── */
+    .overlay {
+      position: fixed; inset: 0; background: rgba(6,6,15,0.82);
+      backdrop-filter: blur(10px); z-index: 100;
+      display: flex; align-items: center; justify-content: center; padding: 20px;
+      opacity: 0; pointer-events: none; transition: opacity var(--tr-s);
+    }
+    .overlay.open { opacity: 1; pointer-events: all; }
+
+    .modal {
+      background: var(--surface); border: 1px solid var(--border-h);
+      border-radius: var(--r-l); width: 100%; max-width: 540px;
+      max-height: 92vh; overflow-y: auto;
+      transform: translateY(14px) scale(0.97);
+      transition: transform var(--tr-s);
+      box-shadow: 0 30px 90px rgba(0,0,0,0.7), 0 0 0 1px rgba(79,255,176,0.04);
+    }
+    .overlay.open .modal { transform: translateY(0) scale(1); }
+
+    .modal-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 22px 0; margin-bottom: 20px;
+    }
+
+    .modal-title { font-family: var(--ff-display); font-size: 17px; font-weight: 800; }
+
+    .modal-close {
+      width: 28px; height: 28px; border-radius: var(--r-s);
+      display: flex; align-items: center; justify-content: center;
+      border: none; background: transparent; cursor: pointer;
+      color: var(--txt-muted); transition: all var(--tr);
+    }
+    .modal-close:hover { background: rgba(255,255,255,0.06); color: var(--txt); }
+
+    .modal-body { padding: 0 22px 22px; }
+
+    /* Form fields */
+    .fg { margin-bottom: 15px; }
+
+    .flabel {
+      display: block; font-size: 9px; text-transform: uppercase;
+      letter-spacing: 0.12em; color: var(--txt-muted); margin-bottom: 5px;
+    }
+
+    .finput {
+      width: 100%; background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--r); padding: 9px 11px;
+      color: var(--txt); font-family: var(--ff-mono); font-size: 12px;
+      outline: none; transition: border-color var(--tr); resize: none;
+    }
+    .finput:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim2); }
+    .finput::placeholder { color: var(--txt-dim); }
+    .finput.err { border-color: var(--red) !important; }
+
+    /* Status selector */
+    .status-sel { display: flex; gap: 5px; }
+    .s-opt {
+      flex: 1; padding: 8px 6px; text-align: center;
+      border-radius: var(--r); border: 1px solid var(--border);
+      background: var(--card); cursor: pointer; font-family: var(--ff-mono);
+      font-size: 10px; color: var(--txt-muted); transition: all var(--tr);
+    }
+    .s-opt:hover { border-color: var(--border-h); color: var(--txt); }
+    .s-opt.sel-todo       { background: var(--s-todo-bg); border-color: var(--s-todo); color: var(--s-todo); }
+    .s-opt.sel-in_progress{ background: var(--s-prog-bg); border-color: var(--s-prog); color: var(--s-prog); }
+    .s-opt.sel-done       { background: var(--s-done-bg); border-color: var(--s-done); color: var(--s-done); }
+
+    /* Progress slider in modal */
+    .modal-prog-wrap { display: flex; align-items: center; gap: 12px; }
+    .modal-prog-slider {
+      flex: 1; -webkit-appearance: none; appearance: none;
+      height: 4px; background: var(--border-h); border-radius: 2px; outline: none;
+    }
+    .modal-prog-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 16px; height: 16px;
+      border-radius: 50%; background: var(--accent);
+      border: 2px solid var(--surface); cursor: pointer;
+      transition: transform var(--tr);
+    }
+    .modal-prog-slider::-webkit-slider-thumb:hover { transform: scale(1.2); }
+    .modal-prog-val { font-size: 14px; font-weight: 600; color: var(--accent); min-width: 38px; text-align: right; }
+
+    /* Tag input */
+    .tags-area {
+      display: flex; flex-wrap: wrap; gap: 5px; padding: 7px 8px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--r); min-height: 40px; cursor: text;
+      transition: border-color var(--tr);
+    }
+    .tags-area:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim2); }
+
+    .tag-x-btn {
+      background: none; border: none; cursor: pointer; padding: 0;
+      color: currentColor; opacity: 0.55; line-height: 1; font-size: 9px;
+      margin-left: 2px; transition: opacity var(--tr);
+    }
+    .tag-x-btn:hover { opacity: 1; }
+
+    .tag-text-input {
+      background: none; border: none; outline: none;
+      color: var(--txt); font-family: var(--ff-mono); font-size: 11px;
+      min-width: 100px; flex: 1;
+    }
+
+    .tag-hint { font-size: 9px; color: var(--txt-dim); margin-top: 3px; }
+
+    .tags-suggestions-wrap { position: relative; }
+    .tag-suggestions {
+      position: absolute; top: 100%; left: 0; right: 0; z-index: 10;
+      background: var(--surface); border: 1px solid var(--border-h);
+      border-radius: var(--r); margin-top: 3px; overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.45); display: none;
+    }
+    .tag-sug-item {
+      display: flex; align-items: center; gap: 8px; padding: 7px 10px;
+      cursor: pointer; font-size: 11px; transition: background var(--tr);
+    }
+    .tag-sug-item:hover { background: var(--card); }
+
+    /* Modal footer */
+    .modal-foot {
+      display: flex; justify-content: space-between; align-items: center;
+      padding-top: 14px; margin-top: 6px; border-top: 1px solid var(--border);
+    }
+
+    .kbd-hint { font-size: 9px; color: var(--txt-dim); }
+    .kbd-hint kbd {
+      background: var(--card); border: 1px solid var(--border-h);
+      border-radius: 3px; padding: 1px 4px; font-family: var(--ff-mono);
+      font-size: 9px; color: var(--txt-muted);
+    }
+
+    /* ───── CONTEXT MENU ───── */
+    .ctx-menu {
+      position: fixed; background: var(--surface);
+      border: 1px solid var(--border-h); border-radius: var(--r);
+      padding: 4px; z-index: 200; box-shadow: 0 10px 36px rgba(0,0,0,0.5);
+      min-width: 170px; display: none;
+      animation: fadeDown 0.1s ease;
+    }
+    .ctx-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 11px; border-radius: var(--r-s);
+      cursor: pointer; font-size: 11px; color: var(--txt-muted);
+      transition: all var(--tr);
+    }
+    .ctx-item:hover { background: var(--card); color: var(--txt); }
+    .ctx-item.danger:hover { background: var(--red-dim); color: var(--red); }
+    .ctx-sep { height: 1px; background: var(--border); margin: 4px 0; }
+    .ctx-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+    /* ───── TOAST ───── */
+    .toast-wrap { position: fixed; bottom: 22px; right: 22px; z-index: 500; display: flex; flex-direction: column; gap: 6px; }
+
+    .toast {
+      background: var(--surface); border: 1px solid var(--border-h);
+      border-radius: var(--r); padding: 9px 14px; font-size: 11px;
+      color: var(--txt); box-shadow: 0 6px 24px rgba(0,0,0,0.45);
+      display: flex; align-items: center; gap: 7px;
+      animation: toastIn 0.25s ease;
+    }
+    @keyframes toastIn { from{transform:translateX(110%);opacity:0} to{transform:translateX(0);opacity:1} }
+    @keyframes toastOut { from{transform:translateX(0);opacity:1} to{transform:translateX(110%);opacity:0} }
+    .toast.out { animation: toastOut 0.25s ease forwards; }
+    .toast.success { border-left: 3px solid var(--accent); }
+    .toast.error   { border-left: 3px solid var(--red); }
+    .toast.info    { border-left: 3px solid var(--purple); }
+
+    /* ───── SHORTCUTS HINT ───── */
+    .shortcuts-bar {
+      display: flex; gap: 16px; padding: 8px 0; margin-top: 30px;
+      border-top: 1px solid var(--border); flex-wrap: wrap;
+    }
+    .sc-item { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--txt-dim); }
+    .sc-item kbd {
+      background: var(--card); border: 1px solid var(--border-h);
+      border-radius: 3px; padding: 1px 5px; font-family: var(--ff-mono);
+      font-size: 9px; color: var(--txt-muted);
+    }
+
+    /* ───── SCROLLBAR ───── */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-h); border-radius: 3px; }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ═══ HEADER ═══ -->
+  <header class="header">
+    <div class="logo">
+      <div class="logo-mark">T</div>
+      <div class="logo-text">
+        <div class="logo-name">Task<em>Flow</em></div>
+        <div class="logo-sub">Планувальник завдань</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <div class="tabs" id="mainTabs">
+        <button class="tab active" data-view="active" onclick="switchView('active')">
+          Активні <span class="tab-badge" id="badgeActive">0</span>
+        </button>
+        <button class="tab" data-view="archive" onclick="switchView('archive')">
+          Архів <span class="tab-badge" id="badgeArchive">0</span>
+        </button>
+      </div>
+      <button class="btn btn-primary" onclick="openModal()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Нова таска
+      </button>
+    </div>
+  </header>
+
+  <!-- ═══ STATS ═══ -->
+  <div class="stats-bar" id="statsBar">
+    <div class="stat-item">
+      <div class="stat-val c-muted" id="stTotal">0</div>
+      <div class="stat-lbl">Всього</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-val c-amber" id="stProg">0</div>
+      <div class="stat-lbl">В роботі</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-val" id="stTodo">0</div>
+      <div class="stat-lbl">Не розпочато</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-val c-accent" id="stDone">0</div>
+      <div class="stat-lbl">Виконано</div>
+    </div>
+  </div>
+
+  <!-- ═══ FILTER BAR ═══ -->
+  <div class="filter-bar">
+    <span class="filter-lbl">Фільтри</span>
+    <div class="active-chips" id="activeChips"></div>
+    <div class="filter-wrap">
+      <button class="btn btn-ghost" id="filterToggleBtn" onclick="toggleFD()" style="padding:6px 10px;font-size:10px">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+        Фільтр
+      </button>
+      <div class="filter-dropdown" id="filterDD">
+        <div class="fd-section">Статус</div>
+        <div class="fd-option" id="fdStat-todo" onclick="toggleStatFilter('todo')">
+          <div class="fd-check" id="fdChk-todo"></div>
+          <span class="status-badge todo"><span class="status-dot"></span>Не розпочато</span>
+        </div>
+        <div class="fd-option" id="fdStat-in_progress" onclick="toggleStatFilter('in_progress')">
+          <div class="fd-check" id="fdChk-in_progress"></div>
+          <span class="status-badge in_progress"><span class="status-dot"></span>В роботі</span>
+        </div>
+        <div class="fd-sep"></div>
+        <div class="fd-section">Теги</div>
+        <div id="fdTagOptions">
+          <div style="font-size:10px;color:var(--txt-dim);padding:4px 8px">Немає тегів</div>
+        </div>
+      </div>
+    </div>
+    <div class="search-wrap">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input class="search-input" id="searchInput" placeholder="Пошук..." oninput="render()">
+    </div>
+  </div>
+
+  <!-- ═══ TASK LIST ═══ -->
+  <div id="taskList" class="task-list"></div>
+
+  <!-- Keyboard shortcuts -->
+  <div class="shortcuts-bar">
+    <div class="sc-item"><kbd>N</kbd> нова таска</div>
+    <div class="sc-item"><kbd>Ctrl</kbd>+<kbd>↵</kbd> зберегти</div>
+    <div class="sc-item"><kbd>Esc</kbd> закрити</div>
+    <div class="sc-item"><kbd>ПКМ</kbd> на таску для швидких дій</div>
+  </div>
+</div>
+
+<!-- ═══ MODAL ═══ -->
+<div class="overlay" id="overlay" onclick="handleOverlayClick(event)">
+  <div class="modal" id="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="modalTitle">Нова таска</div>
+      <button class="modal-close" onclick="closeModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editId">
+
+      <div class="fg">
+        <label class="flabel">Назва *</label>
+        <input class="finput" id="fTitle" placeholder="Введіть назву завдання..." maxlength="120">
+      </div>
+
+      <div class="fg">
+        <label class="flabel">Опис</label>
+        <textarea class="finput" id="fDesc" rows="3" placeholder="Деталі, нотатки, посилання..."></textarea>
+      </div>
+
+      <div class="fg">
+        <label class="flabel">Статус</label>
+        <div class="status-sel">
+          <div class="s-opt" id="sopt-todo"        onclick="pickStatus('todo')">Не розпочато</div>
+          <div class="s-opt" id="sopt-in_progress"  onclick="pickStatus('in_progress')">В роботі</div>
+          <div class="s-opt" id="sopt-done"         onclick="pickStatus('done')">Завершено</div>
+        </div>
+      </div>
+
+      <div class="fg">
+        <label class="flabel">Прогрес — <span id="progLbl" style="color:var(--accent)">0%</span></label>
+        <div class="modal-prog-wrap">
+          <input type="range" class="modal-prog-slider" id="progSlider" min="0" max="100" value="0"
+            oninput="document.getElementById('progLbl').textContent=this.value+'%'">
+        </div>
+      </div>
+
+      <div class="fg">
+        <label class="flabel">Теги</label>
+        <div class="tags-suggestions-wrap">
+          <div class="tags-area" id="tagsArea" onclick="document.getElementById('tagInput').focus()">
+            <div id="tagPills" style="display:contents"></div>
+            <input class="tag-text-input" id="tagInput" placeholder="Тег..."
+              onkeydown="onTagKey(event)" oninput="showSugg(this.value)">
+          </div>
+          <div class="tag-suggestions" id="tagSugg"></div>
+        </div>
+        <div class="tag-hint">Enter або кома — додати тег · Backspace — видалити останній</div>
+      </div>
+
+      <div class="modal-foot">
+        <div id="modalDeleteBtn"></div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="kbd-hint"><kbd>Ctrl</kbd>+<kbd>↵</kbd></span>
+          <button class="btn btn-ghost" onclick="closeModal()">Скасувати</button>
+          <button class="btn btn-primary" onclick="saveTask()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Зберегти
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ CONTEXT MENU ═══ -->
+<div class="ctx-menu" id="ctxMenu">
+  <div class="ctx-item" onclick="ctxStatus('todo')">
+    <span class="ctx-dot" style="background:var(--s-todo)"></span>Не розпочато
+  </div>
+  <div class="ctx-item" onclick="ctxStatus('in_progress')">
+    <span class="ctx-dot" style="background:var(--s-prog)"></span>В роботі
+  </div>
+  <div class="ctx-item" onclick="ctxStatus('done')">
+    <span class="ctx-dot" style="background:var(--s-done)"></span>Завершено
+  </div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" onclick="ctxEdit()">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+    Редагувати
+  </div>
+  <div class="ctx-item danger" onclick="ctxDel()">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+    Видалити
+  </div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+// ════════════════════════════════════
+//  DATA
+// ════════════════════════════════════
+const SK = 'tf_tasks', TK = 'tf_tags';
+
+let tasks = [];
+let allTags = [];
+let view = 'active';
+let filters = { statuses: [], tags: [] };
+let ctxId = null;
+let mTags = [];
+let mStatus = 'todo';
+
+const TAG_PALETTE = [
+  { bg:'rgba(157,127,245,.15)', c:'#b39ff7', bd:'rgba(157,127,245,.4)' },
+  { bg:'rgba(245,166,35,.14)',  c:'#f5b84f', bd:'rgba(245,166,35,.4)' },
+  { bg:'rgba(240,130,160,.14)', c:'#f08eb0', bd:'rgba(240,130,160,.4)' },
+  { bg:'rgba(79,178,255,.14)',  c:'#70bcf5', bd:'rgba(79,178,255,.4)' },
+  { bg:'rgba(52,211,153,.14)',  c:'#4fffb0', bd:'rgba(52,211,153,.4)' },
+  { bg:'rgba(240,96,96,.14)',   c:'#f07878', bd:'rgba(240,96,96,.4)' },
+  { bg:'rgba(45,212,191,.14)',  c:'#2dd4bf', bd:'rgba(45,212,191,.4)' },
+  { bg:'rgba(251,146,60,.14)',  c:'#fb9d50', bd:'rgba(251,146,60,.4)' },
+];
+
+function tagColor(tag) {
+  let h = 0;
+  for (let ch of tag) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return TAG_PALETTE[h % TAG_PALETTE.length];
+}
+
+function load() {
+  try { tasks   = JSON.parse(localStorage.getItem(SK) || '[]'); } catch { tasks = []; }
+  try { allTags = JSON.parse(localStorage.getItem(TK) || '[]'); } catch { allTags = []; }
+}
+
+function save() {
+  localStorage.setItem(SK, JSON.stringify(tasks));
+  localStorage.setItem(TK, JSON.stringify(allTags));
+}
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+// ════════════════════════════════════
+//  SORTING & FILTERING
+// ════════════════════════════════════
+function filteredTasks() {
+  const q = (document.getElementById('searchInput')?.value || '').toLowerCase();
+  let list = tasks.filter(t => view === 'active' ? t.status !== 'done' : t.status === 'done');
+
+  if (filters.statuses.length)
+    list = list.filter(t => filters.statuses.includes(t.status));
+  if (filters.tags.length)
+    list = list.filter(t => filters.tags.every(tag => t.tags.includes(tag)));
+  if (q)
+    list = list.filter(t =>
+      t.title.toLowerCase().includes(q) ||
+      (t.description||'').toLowerCase().includes(q) ||
+      t.tags.some(tg => tg.toLowerCase().includes(q))
+    );
+
+  if (view === 'active') {
+    const prog = list.filter(t => t.status === 'in_progress').sort((a,b) => b.progress - a.progress);
+    const todo = list.filter(t => t.status === 'todo').sort((a,b) => a.createdAt - b.createdAt);
+    return [...prog, ...todo];
+  }
+  return list.sort((a,b) => (b.completedAt||0) - (a.completedAt||0));
+}
+
+// ════════════════════════════════════
+//  RENDER
+// ════════════════════════════════════
+function render() {
+  const list = filteredTasks();
+  const el = document.getElementById('taskList');
+
+  updateStats();
+  renderChips();
+  updateFDChecks();
+  renderFDTags();
+
+  if (!list.length) {
+    el.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">${view==='active'?'✦':'◎'}</div>
+        <h3>${view==='active'?'Немає активних завдань':'Архів порожній'}</h3>
+        <p>${view==='active'?'Натисніть «Нова таска» або клавішу N':'Виконані завдання зʼявляться тут'}</p>
+      </div>`;
+    return;
+  }
+
+  let html = '';
+  if (view === 'active') {
+    const prog = list.filter(t => t.status === 'in_progress');
+    const todo = list.filter(t => t.status === 'todo');
+    if (prog.length) {
+      html += `<div class="group-label">В роботі · ${prog.length}</div>`;
+      prog.forEach(t => { html += cardHTML(t); });
+    }
+    if (todo.length) {
+      html += `<div class="group-label">Не розпочато · ${todo.length}</div>`;
+      todo.forEach(t => { html += cardHTML(t); });
+    }
+  } else {
+    html += `<div class="group-label">Архів · ${list.length}</div>`;
+    list.forEach(t => { html += cardHTML(t); });
+  }
+
+  el.innerHTML = html;
+  attachCardEvents();
+}
+
+function cardHTML(t) {
+  const tagHtml = t.tags.map(tg => {
+    const c = tagColor(tg);
+    return `<span class="tag-pill" style="background:${c.bg};color:${c.c};border-color:${c.bd}">${esc(tg)}</span>`;
+  }).join('');
+
+  const sLabel = { todo:'Не розпочато', in_progress:'В роботі', done:'Завершено' }[t.status];
+  const date   = relDate(t.createdAt);
+  const chkSvg = t.status==='done'
+    ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`
+    : '';
+
+  return `
+  <div class="task-card ${t.status}" data-id="${t.id}">
+    <div class="task-row">
+      <div class="task-cb" data-id="${t.id}">${chkSvg}</div>
+      <div class="task-body">
+        <div class="task-top">
+          <div class="task-title">${esc(t.title)}</div>
+          <div class="task-right">
+            <span class="status-badge ${t.status}"><span class="status-dot"></span>${sLabel}</span>
+          </div>
+        </div>
+        ${t.description ? `<div class="task-desc">${esc(t.description)}</div>` : ''}
+        ${tagHtml ? `<div class="task-tags">${tagHtml}</div>` : ''}
+        <div class="task-footer">
+          <div class="task-progress">
+            <div class="prog-track">
+              <div class="prog-fill" id="pf-${t.id}" style="width:${t.progress}%"></div>
+              <div class="prog-slider-wrap">
+                <input type="range" class="prog-slider" min="0" max="100" value="${t.progress}"
+                  data-id="${t.id}" title="Прогрес">
+              </div>
+            </div>
+            <span class="prog-pct" id="pp-${t.id}">${t.progress}%</span>
+          </div>
+          <span class="task-date">${date}</span>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function attachCardEvents() {
+  // Checkbox (done toggle)
+  document.querySelectorAll('.task-cb').forEach(el => {
+    el.addEventListener('click', e => { e.stopPropagation(); toggleDone(el.dataset.id); });
+  });
+
+  // Inline progress slider
+  document.querySelectorAll('.prog-slider').forEach(sl => {
+    sl.addEventListener('mousedown', e => e.stopPropagation());
+    sl.addEventListener('click', e => e.stopPropagation());
+    sl.addEventListener('input', function() {
+      const val = +this.value;
+      const id  = this.dataset.id;
+      const pf  = document.getElementById('pf-' + id);
+      const pp  = document.getElementById('pp-' + id);
+      if (pf) pf.style.width = val + '%';
+      if (pp) pp.textContent  = val + '%';
+    });
+    sl.addEventListener('change', function() {
+      updateProgress(this.dataset.id, +this.value);
+    });
+  });
+
+  // Open edit modal on card click
+  document.querySelectorAll('.task-card').forEach(el => {
+    el.addEventListener('click', () => openModal(el.dataset.id));
+    el.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      ctxId = el.dataset.id;
+      showCtx(e.clientX, e.clientY);
+    });
+  });
+}
+
+// ════════════════════════════════════
+//  STATS
+// ════════════════════════════════════
+function updateStats() {
+  const active = tasks.filter(t => t.status !== 'done');
+  document.getElementById('stTotal').textContent = active.length;
+  document.getElementById('stProg' ).textContent = tasks.filter(t => t.status==='in_progress').length;
+  document.getElementById('stTodo' ).textContent = tasks.filter(t => t.status==='todo').length;
+  document.getElementById('stDone' ).textContent = tasks.filter(t => t.status==='done').length;
+  document.getElementById('badgeActive' ).textContent = active.length;
+  document.getElementById('badgeArchive').textContent = tasks.filter(t => t.status==='done').length;
+}
+
+// ════════════════════════════════════
+//  VIEW SWITCH
+// ════════════════════════════════════
+function switchView(v) {
+  view = v;
+  filters = { statuses:[], tags:[] };
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.view===v));
+  render();
+}
+
+// ════════════════════════════════════
+//  TASK OPS
+// ════════════════════════════════════
+function toggleDone(id) {
+  const t = tasks.find(t => t.id===id);
+  if (!t) return;
+  if (t.status === 'done') {
+    t.status = 'in_progress'; t.completedAt = null;
+    toast('Таску повернуто з архіву', 'info');
+  } else {
+    t.status = 'done'; t.progress = 100; t.completedAt = Date.now();
+    toast('✦ Виконано!', 'success');
+  }
+  save(); render();
+}
+
+function updateProgress(id, val) {
+  const t = tasks.find(t => t.id===id);
+  if (t) { t.progress = val; save(); }
+}
+
+function deleteTask(id) {
+  tasks = tasks.filter(t => t.id!==id);
+  save(); render();
+  toast('Таску видалено', 'error');
+}
+
+// ════════════════════════════════════
+//  MODAL
+// ════════════════════════════════════
+function openModal(id) {
+  mTags = []; mStatus = 'todo';
+  const ov = document.getElementById('overlay');
+
+  if (id) {
+    const t = tasks.find(t => t.id===id);
+    if (!t) return;
+    document.getElementById('modalTitle').textContent = 'Редагувати таску';
+    document.getElementById('editId').value = id;
+    document.getElementById('fTitle').value = t.title;
+    document.getElementById('fDesc').value  = t.description || '';
+    document.getElementById('progSlider').value = t.progress;
+    document.getElementById('progLbl').textContent = t.progress + '%';
+    mTags   = [...t.tags];
+    mStatus = t.status;
+    document.getElementById('modalDeleteBtn').innerHTML =
+      `<button class="btn btn-danger" onclick="deleteTask('${id}');closeModal()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        Видалити
+      </button>`;
+  } else {
+    document.getElementById('modalTitle').textContent = 'Нова таска';
+    document.getElementById('editId').value = '';
+    document.getElementById('fTitle').value = '';
+    document.getElementById('fDesc').value  = '';
+    document.getElementById('progSlider').value = 0;
+    document.getElementById('progLbl').textContent = '0%';
+    document.getElementById('modalDeleteBtn').innerHTML = '';
+  }
+
+  pickStatus(mStatus);
+  renderModalPills();
+  ov.classList.add('open');
+  setTimeout(() => document.getElementById('fTitle').focus(), 80);
+}
+
+function closeModal() {
+  document.getElementById('overlay').classList.remove('open');
+  hideSugg();
+}
+
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('overlay')) closeModal();
+}
+
+function pickStatus(s) {
+  mStatus = s;
+  ['todo','in_progress','done'].forEach(opt => {
+    const el = document.getElementById('sopt-' + opt);
+    el.className = 's-opt';
+    if (opt === s) el.classList.add('sel-' + opt);
+  });
+}
+
+function saveTask() {
+  const title = document.getElementById('fTitle').value.trim();
+  if (!title) {
+    const el = document.getElementById('fTitle');
+    el.classList.add('err');
+    setTimeout(() => el.classList.remove('err'), 1800);
+    el.focus();
+    return;
+  }
+
+  const id          = document.getElementById('editId').value;
+  const description = document.getElementById('fDesc').value.trim();
+  const progress    = +document.getElementById('progSlider').value;
+
+  mTags.forEach(tg => { if (!allTags.includes(tg)) allTags.push(tg); });
+
+  if (id) {
+    const t = tasks.find(t => t.id===id);
+    if (t) {
+      t.title = title; t.description = description;
+      t.tags  = [...mTags]; t.status = mStatus; t.progress = progress;
+      if (mStatus==='done' && !t.completedAt) t.completedAt = Date.now();
+      if (mStatus!=='done') t.completedAt = null;
+      toast('Зміни збережено', 'success');
+    }
+  } else {
+    tasks.push({
+      id: uid(), title, description,
+      tags: [...mTags], status: mStatus, progress,
+      createdAt: Date.now(),
+      completedAt: mStatus==='done' ? Date.now() : null
+    });
+    toast('✦ Таску додано', 'success');
+  }
+
+  save(); closeModal(); render();
+}
+
+// ════════════════════════════════════
+//  TAG INPUT
+// ════════════════════════════════════
+function renderModalPills() {
+  document.getElementById('tagPills').innerHTML = mTags.map((tg, i) => {
+    const c = tagColor(tg);
+    return `<span class="tag-pill" style="background:${c.bg};color:${c.c};border-color:${c.bd}">
+      ${esc(tg)}
+      <button class="tag-x-btn" onclick="removeTag(${i})">✕</button>
+    </span>`;
+  }).join('');
+}
+
+function removeTag(i) { mTags.splice(i,1); renderModalPills(); }
+
+function addTag(tg) {
+  tg = tg.trim().toLowerCase().replace(/[,]/g,'');
+  if (!tg || mTags.includes(tg)) { document.getElementById('tagInput').value=''; return; }
+  mTags.push(tg);
+  if (!allTags.includes(tg)) allTags.push(tg);
+  renderModalPills();
+  document.getElementById('tagInput').value = '';
+  hideSugg();
+}
+
+function onTagKey(e) {
+  if (e.key==='Enter' || e.key===',') {
+    e.preventDefault();
+    if (e.target.value.trim()) addTag(e.target.value);
+  } else if (e.key==='Backspace' && !e.target.value && mTags.length) {
+    mTags.pop(); renderModalPills();
+  }
+}
+
+function showSugg(val) {
+  val = val.toLowerCase().trim();
+  const box = document.getElementById('tagSugg');
+  const opts = allTags.filter(t => !mTags.includes(t) && t.toLowerCase().includes(val));
+
+  let html = '';
+  opts.slice(0,6).forEach(tg => {
+    const c = tagColor(tg);
+    html += `<div class="tag-sug-item" onclick="addTag('${esc(tg)}')">
+      <span class="tag-pill" style="background:${c.bg};color:${c.c};border-color:${c.bd}">${esc(tg)}</span>
+    </div>`;
+  });
+  if (val && !allTags.includes(val)) {
+    html += `<div class="tag-sug-item" onclick="addTag('${esc(val)}')">
+      <span style="color:var(--txt-muted);font-size:10px">+ Додати:</span>
+      <span style="color:var(--accent)">"${esc(val)}"</span>
+    </div>`;
+  }
+
+  box.innerHTML  = html;
+  box.style.display = html ? 'block' : 'none';
+}
+
+function hideSugg() {
+  document.getElementById('tagSugg').style.display = 'none';
+}
+
+// ════════════════════════════════════
+//  FILTERS
+// ════════════════════════════════════
+function toggleFD() {
+  document.getElementById('filterDD').classList.toggle('open');
+}
+
+function toggleStatFilter(s) {
+  const i = filters.statuses.indexOf(s);
+  if (i>=0) filters.statuses.splice(i,1); else filters.statuses.push(s);
+  render();
+}
+
+function toggleTagFilter(tg) {
+  const i = filters.tags.indexOf(tg);
+  if (i>=0) filters.tags.splice(i,1); else filters.tags.push(tg);
+  render();
+}
+
+function updateFDChecks() {
+  ['todo','in_progress'].forEach(s => {
+    const opt = document.getElementById('fdStat-' + s);
+    const chk = document.getElementById('fdChk-' + s);
+    const on  = filters.statuses.includes(s);
+    opt?.classList.toggle('on', on);
+    if (chk) chk.innerHTML = on ? '✓' : '';
+  });
+}
+
+function renderFDTags() {
+  const el = document.getElementById('fdTagOptions');
+  if (!el) return;
+  if (!allTags.length) {
+    el.innerHTML = '<div style="font-size:10px;color:var(--txt-dim);padding:4px 8px">Немає тегів</div>';
+    return;
+  }
+  el.innerHTML = allTags.map(tg => {
+    const c  = tagColor(tg);
+    const on = filters.tags.includes(tg);
+    return `<div class="fd-option ${on?'on':''}" onclick="toggleTagFilter('${esc(tg)}');renderFDTags()">
+      <div class="fd-check">${on?'✓':''}</div>
+      <span class="tag-pill" style="background:${c.bg};color:${c.c};border-color:${c.bd}">${esc(tg)}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderChips() {
+  const el = document.getElementById('activeChips');
+  const sLabels = { todo:'Не розпочато', in_progress:'В роботі' };
+  const sBg = {
+    todo:       'background:var(--s-todo-bg);color:var(--s-todo);border-color:rgba(96,96,128,.4)',
+    in_progress:'background:var(--s-prog-bg);color:var(--s-prog);border-color:rgba(245,166,35,.4)'
+  };
+  let html = '';
+  filters.statuses.forEach(s => {
+    html += `<span class="chip" style="${sBg[s]};border:1px solid">
+      ${sLabels[s]}
+      <span class="chip-x" onclick="toggleStatFilter('${s}')">✕</span>
+    </span>`;
+  });
+  filters.tags.forEach(tg => {
+    const c = tagColor(tg);
+    html += `<span class="chip" style="background:${c.bg};color:${c.c};border:1px solid ${c.bd}">
+      #${esc(tg)}
+      <span class="chip-x" onclick="toggleTagFilter('${tg}')">✕</span>
+    </span>`;
+  });
+  if (html) html += `<span class="clear-all" onclick="clearFilters()">Скинути всі</span>`;
+  el.innerHTML = html;
+}
+
+function clearFilters() { filters = { statuses:[], tags:[] }; render(); }
+
+// ════════════════════════════════════
+//  CONTEXT MENU
+// ════════════════════════════════════
+function showCtx(x, y) {
+  const m = document.getElementById('ctxMenu');
+  m.style.display = 'block';
+  m.style.left = Math.min(x, innerWidth  - 185) + 'px';
+  m.style.top  = Math.min(y, innerHeight - 165) + 'px';
+}
+function hideCtx() { document.getElementById('ctxMenu').style.display = 'none'; }
+
+function ctxStatus(s) {
+  if (!ctxId) return;
+  const t = tasks.find(t => t.id===ctxId);
+  if (t) {
+    t.status = s;
+    if (s==='done') { t.progress=100; t.completedAt=Date.now(); }
+    else t.completedAt=null;
+    save(); render();
+    toast(s==='done'?'✦ Виконано!':'Статус оновлено','success');
+  }
+  hideCtx();
+}
+function ctxEdit() { if (ctxId) openModal(ctxId); hideCtx(); }
+function ctxDel()  { if (ctxId) deleteTask(ctxId); hideCtx(); }
+
+// ════════════════════════════════════
+//  TOAST
+// ════════════════════════════════════
+function toast(msg, type='success') {
+  const c = document.getElementById('toastWrap');
+  const d = document.createElement('div');
+  d.className = `toast ${type}`;
+  d.textContent = msg;
+  c.appendChild(d);
+  setTimeout(() => { d.classList.add('out'); setTimeout(() => d.remove(), 250); }, 2400);
+}
+
+// ════════════════════════════════════
+//  UTILS
+// ════════════════════════════════════
+function esc(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function relDate(ts) {
+  const diff = Date.now() - ts;
+  if (diff < 60000)       return 'Щойно';
+  if (diff < 3600000)     return Math.floor(diff/60000) + 'хв тому';
+  if (diff < 86400000)    return Math.floor(diff/3600000) + 'г тому';
+  if (diff < 604800000)   return Math.floor(diff/86400000) + 'д тому';
+  return new Date(ts).toLocaleDateString('uk-UA', { day:'2-digit', month:'2-digit', year:'2-digit' });
+}
+
+// ════════════════════════════════════
+//  KEYBOARD SHORTCUTS
+// ════════════════════════════════════
+document.addEventListener('keydown', e => {
+  const inInput = ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName);
+  if (e.key==='Escape') { closeModal(); hideCtx(); hideSugg(); }
+  if (e.key==='n' && !inInput && !e.ctrlKey && !e.metaKey) openModal();
+  if ((e.ctrlKey||e.metaKey) && e.key==='Enter' && document.getElementById('overlay').classList.contains('open')) saveTask();
+});
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#ctxMenu')) hideCtx();
+  if (!e.target.closest('#filterDD') && !e.target.closest('#filterToggleBtn'))
+    document.getElementById('filterDD').classList.remove('open');
+  if (!e.target.closest('.tags-suggestions-wrap')) hideSugg();
+});
+
+// ════════════════════════════════════
+//  BOOTSTRAP — sample data if empty
+// ════════════════════════════════════
+load();
+
+if (!tasks.length) {
+  const now = Date.now();
+  tasks = [
+    { id:uid(), title:'Розробити дизайн головної сторінки', description:'Wireframes, кольорова схема, типографіка. Погодити з командою до п\u2019ятниці.', tags:['дизайн','робота'], status:'in_progress', progress:68, createdAt:now-86400000*3, completedAt:null },
+    { id:uid(), title:'Написати unit-тести для API', description:'Покриття не менше 80%. Використовувати Jest + Testing Library.', tags:['розробка','тести'], status:'in_progress', progress:35, createdAt:now-86400000*2, completedAt:null },
+    { id:uid(), title:'Зустріч із клієнтом', description:'Обговорити вимоги до нового модуля. Підготувати список питань.', tags:['робота'], status:'todo', progress:0, createdAt:now-86400000*5, completedAt:null },
+    { id:uid(), title:'Вивчити Svelte 5', description:'Пройти офіційний туторіал та зробити тестовий проект.', tags:['навчання','розробка'], status:'todo', progress:0, createdAt:now-86400000*7, completedAt:null },
+    { id:uid(), title:'Оновити залежності проекту', description:'npm audit fix, оновити мажорні пакети, перевірити breaking changes.', tags:['розробка'], status:'todo', progress:0, createdAt:now-86400000*9, completedAt:null },
+    { id:uid(), title:'Купити продукти', description:'Молоко, хліб, яйця, овочі для тижневого меню.', tags:['особисте'], status:'done', progress:100, createdAt:now-86400000, completedAt:now-3600000*2 },
+  ];
+  allTags = ['дизайн','робота','розробка','тести','навчання','особисте'];
+  save();
+}
+
+render();
+</script>
+</body>
+</html>
