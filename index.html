@@ -141,7 +141,7 @@
     .task-list { display: flex; flex-direction: column; gap: 2px; }
     .group-label { font-size: 9px; text-transform: uppercase; letter-spacing: .14em; color: var(--txt-d); padding: 14px 0 6px; display: flex; align-items: center; gap: 8px; }
     .group-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-    .task-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 12px 14px; cursor: pointer; transition: all var(--tr); position: relative; overflow: hidden; animation: cardIn .18s ease both; }
+    .task-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 12px 14px; cursor: pointer; transition: all var(--tr); position: relative; overflow: hidden; }
     @keyframes cardIn { from{opacity:0;transform:translateX(-5px)} to{opacity:1;transform:translateX(0)} }
     .task-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; border-radius: 2px 0 0 2px; transition: background var(--tr); }
     .task-card.todo::before       { background: var(--border-h); }
@@ -549,6 +549,9 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
+<!-- Anime.js for animations -->
+<script src="https://cdn.jsdelivr.net/npm/animejs@4/lib/anime.iife.min.js"></script>
+
 <script>
 // ═════════════════════════════════════════
 //  KEYS & STATE
@@ -807,6 +810,10 @@ function render() {
   }
   el.innerHTML = html;
   attachCardEvents();
+
+  el.querySelectorAll('.task-card').forEach((card, i) => {
+    card.style.animation = `cardIn 0.22s ease ${i * 40}ms both`;
+  });
 }
 
 function cardHTML(t) {
