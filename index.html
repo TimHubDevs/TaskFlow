@@ -663,7 +663,7 @@ function startFbListener() {
   fbListener = fbDb.ref('taskflow').on('value', snap => {
     const data = snap.val();
     if (data) {
-      tasks     = data.tasks     || [];
+      tasks     = (data.tasks || []).map(normalizeTask);
       allTags   = data.allTags   || [];
       tagColors = data.tagColors || {};
       saveLocal();
@@ -672,8 +672,23 @@ function startFbListener() {
     } else {
       setSyncStatus('online');
     }
-  }, () => setSyncStatus('error'));
+  }, (err) => {
+    console.error('Firebase listener error:', err);
+    setSyncStatus('error');
+    toast('Firebase: ' + err.message, 'error');
+  });
 }
+
+function normalizeTask(t) {
+  return {
+    ...t,
+    tags: t.tags || [],
+    description: t.description || '',
+    progress: t.progress || 0,
+    completedAt: t.completedAt || null,
+  };
+}
+
 
 function setSyncStatus(state) {
   const dot = document.getElementById('syncDot');
@@ -725,7 +740,7 @@ function connectFirebase(mode) {
   } else if (mode === 'merge') {
     fbDb.ref('taskflow').once('value').then(snap => {
       const fbData = snap.val() || {};
-      const fbTasks = fbData.tasks || [];
+      const fbTasks = (fbData.tasks || []).map(normalizeTask);
       const fbTags  = fbData.allTags || [];
       const fbClrs  = fbData.tagColors || {};
       const merged  = mergeTasks(localTasks, fbTasks);
@@ -817,7 +832,7 @@ function render() {
 }
 
 function cardHTML(t) {
-  const tagHtml = t.tags.map(tg => {
+  const tagHtml = (t.tags || []).map(tg => {
     const c = getTagColor(tg);
     return `<span class="tag-pill" style="background:${c.bg};color:${c.c};border-color:${c.bd}">${esc(tg)}</span>`;
   }).join('');
